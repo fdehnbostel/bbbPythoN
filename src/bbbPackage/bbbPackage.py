@@ -21,10 +21,8 @@ from rdkit.Chem import rdForceFieldHelpers
 # mordred
 from mordred import Calculator, descriptors
 
-
-
 #----TYPE CHECK----#
-def IS_TYPE(desc_value,wBool = 1):
+def IsType(desc_value,wBool = 1):
     """
     Checks if given descriptor value is float, int or, if specified, bool.
     """
@@ -39,7 +37,7 @@ def IS_TYPE(desc_value,wBool = 1):
         return(is_any)
 
 #----SMILES TO MOLS----#
-def SMILES_TO_MOLS(smilesList):
+def SmilesToMols(smilesList):
     """
     Produces molecule objects from SMILES.
     """
@@ -50,7 +48,7 @@ def SMILES_TO_MOLS(smilesList):
 
 #----DATASET FETCHING----#
 
-def DATA_FROM_CSV(filepath,smiles_pos=1,
+def DataFromCSV(filepath,smiles_pos=1,
                   id_pos=0,skip_first=False):
     """
     Retrieves smiles and ids from .csv file.
@@ -66,7 +64,7 @@ def DATA_FROM_CSV(filepath,smiles_pos=1,
             ids.append(row[id_pos])
     return(smiles,ids)
     
-def MOLS_FROM_SDF(filepath,id_name="ID"):
+def MolsFromSDF(filepath,id_name="ID"):
     """
     Fetching molecules from .sdf files.
     """
@@ -83,58 +81,47 @@ def MOLS_FROM_SDF(filepath,id_name="ID"):
 
 #----FETCHING DESCRIPTOR NAMES AND BIN BOUNDARIES----#
 
-def READ_BIN_LIMS(desc_dim,nBits,ks_dist):
+def ReadBinBounds():
     """
     Fetches the limits of the bins used for binary encoding of 
     MI-DSE descriptor values.
     """
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    ks_dict = {"eu": "euclidean", "ma": "mahalanobis"}
-    filename = os.path.join(dir_path,"bin_lims",ks_dict.get(ks_dist,""),
-                            "{}_{}-bits_{}-dist_bin_lims.csv".format(desc_dim,nBits,ks_dist))    
+    filename = os.path.join(dir_path,"bin_bounds","bin_bounds.csv")    
     name = []
-    bin_lims = []
+    bin_bounds = []
     with open(filename,"r") as file:
         reader = csv.reader(file,delimiter="\n")
         for row in reader:
-            row_split = row[0].split(":")
+            row_split = row[0].split(",")
             name.append(row_split[0])
-            bin_lims.append((row_split[0],[float(val) for val in row_split[1].split(",")]))
-    return(bin_lims)
+            bin_bounds.append((row_split[0],[float(val) for val in row_split[1:]]))
+    return(bin_bounds)
     
-def READ_CLS_DESC(desc_dim,check_midse=False,feat_sel=False):
+def ReadClassDesc():
     """
     Fetches names of structural key and MI-DSE descriptors.
-    """
-    if desc_dim == "2D+3D" and feat_sel == True:
-        na_frac_diff_names_3d,midse_names_3d = READ_CLS_DESC("3D",check_midse=check_midse)
-        na_frac_diff_names_2d,midse_names_2d = READ_CLS_DESC("2D",check_midse=check_midse)
-        midse_names_2d3d = midse_names_2d + midse_names_3d
-        return(na_frac_diff_names_2d,midse_names_2d3d)
-    else:
-        mi_dse_names = []
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(os.path.join(dir_path,"desc_names","{}_mi_dse_descs.csv".format(desc_dim)),"r") as file:
-            reader = csv.reader(file,delimiter = ";")
-            row = next(reader)
-            for tup in row:
-                split_tup = tup.split(":")
-                if check_midse:
-                    mi_dse_names.append((split_tup[0],float(split_tup[1])))
-                else:
-                    mi_dse_names.append(split_tup[0])
-        na_frac_diff_names = []
-        filename = os.path.join(dir_path,"desc_names", "{}_na_descs.csv".format(desc_dim) )
-        if os.stat(filename).st_size != 0:
-            with open(filename,"r") as file:
-                reader = csv.reader(file,delimiter = ";")
-                row = next(reader)
-                for name in row:
-                    na_frac_diff_names.append(name)
-        return(na_frac_diff_names,mi_dse_names)    
+    """  
+    mi_dse_names = []
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(dir_path,"desc_names","mi_dse_descs.csv"),"r") as file:
+        reader = csv.reader(file,delimiter = "\n")
+        for row in reader:
+            row_split = row[0].split(",")
+            mi_dse_names.append(row_split[0])
+        
+    na_frac_diff_names = []
+    filename = os.path.join(dir_path,"desc_names", "na_descs.csv")
+    if os.stat(filename).st_size != 0:
+        with open(filename,"r") as file:
+            reader = csv.reader(file,delimiter = "\n")
+            for row in reader:
+                na_frac_diff_names.append(row[0])
+
+    return(na_frac_diff_names,mi_dse_names)    
 
 #----MOLECULAR COORDINATES AND DESCRIPTOR CALCULATION----#
-def CALC_3D(mol):
+def Calc3D(mol):
     """
     Calculates the 3D coordinates of the given molecule using a Force
     Field of the rdkit package.
@@ -152,20 +139,20 @@ def CALC_3D(mol):
         mol_3d = "err"
     return(mol_3d)
     
-def PROD_3D_MOLS(mols):
+def Prod3DMols(mols):
     """
     Produces list of molecules with 3D coordinates.
     """
     mols_3d = []
     for i,mol in enumerate(mols):
-        mols_3d.append(CALC_3D(mol))
+        mols_3d.append(Calc3D(mol))
     return(mols_3d)
          
-def CALC_DESCS_3D(mols,midse_desc_names=[]):
+def CalcDesc3D(mols,midse_desc_names=[]):
     """
     Calculates 3D descriptors of given molecules.
     """
-    mols = PROD_3D_MOLS(mols)
+    mols = Prod3DMols(mols)
     calc = Calculator(descriptors, ignore_3D=False)
     if midse_desc_names:
         calc.descriptors = [desc for desc in calc.descriptors if str(desc) in midse_desc_names]
@@ -174,7 +161,7 @@ def CALC_DESCS_3D(mols,midse_desc_names=[]):
     df = calc.pandas(mols)
     return(df)    
         
-def CALC_DESCS_2D(mols,midse_desc_names=[]):
+def CalcDesc2D(mols,midse_desc_names=[]):
     """
     Calculates 2D descriptors of given molecules.
     """
@@ -185,7 +172,7 @@ def CALC_DESCS_2D(mols,midse_desc_names=[]):
     df = calc.pandas(mols)
     return(df)
 
-def GET_3D_DESC_NAMES():
+def Get3DDescNames():
     """
     Retrieves the names of 3D descriptors.
     """
@@ -193,23 +180,23 @@ def GET_3D_DESC_NAMES():
     descs_3D_names = [str(desc) for desc in descs_3D if desc not in descs_2D]
     return(descs_3D_names)
 
-def DF_PROD_DESCS(desc_dim,mols,keep_desc_names=[]):
+def ProdDescDF(desc_dim,mols,keep_desc_names=[]):
     """
     Creates pandas dataframe containing descriptors of specified 
     dimension.
     """
     if desc_dim == "2D":
-        df = CALC_DESCS_2D(mols,midse_desc_names=keep_desc_names)
+        df = CalcDesc2D(mols,midse_desc_names=keep_desc_names)
     elif desc_dim == "3D" or desc_dim == "2D+3D":
-        df = CALC_DESCS_3D(mols,midse_desc_names=keep_desc_names)
+        df = CalcDesc3D(mols,midse_desc_names=keep_desc_names)
         if desc_dim == "3D" and not keep_desc_names:
             # getting dataframe only consisting of 3D descriptors
-            df = df[GET_3D_DESC_NAMES()]
+            df = df[Get3DDescNames()]
     return(df)
     
 #------Fingerprinting------#
 
-def CHECK_BIN(val,bin_lims,nBins,fp=False):
+def CheckBin(val,bin_bounds,nBins,fp=False):
     """
     Allocates a descriptor of a molecule to a bin based on its value.
     """
@@ -222,29 +209,29 @@ def CHECK_BIN(val,bin_lims,nBins,fp=False):
         min_bin = 1
         ret_bin = 0
         
-    if val > bin_lims[-1]:
+    if val > bin_bounds[-1]:
         return(max_ret_bin)
-    elif val <= bin_lims[min_bin]:
+    elif val <= bin_bounds[min_bin]:
         return(0)
     else:
         for i in range(0,nBins-1):
-            if bin_lims[i] < val <= bin_lims[i+1]:
+            if bin_bounds[i] < val <= bin_bounds[i+1]:
                 return(i+ret_bin)      
                               
-def PROD_BIT_FP(desc_vals,na_names,bin_lims_list,nBits):
+def ProdBitFP(desc_vals,na_names,bin_bounds_list,nBits):
     """
     Produces fingerprints for given molecule. 
     """
     desc_fp = []
     if na_names:
         for name in na_names: 
-            if not IS_TYPE(desc_vals[name]):
+            if not IsType(desc_vals[name]):
                 desc_fp.append(0)
             else:
                 desc_fp.append(1)
     if nBits != 1:
-        for bin_lims in bin_lims_list:
-            bin_ind = CHECK_BIN(desc_vals[bin_lims[0]],bin_lims[1],nBits,fp=True)
+        for bin_bounds in bin_bounds_list:
+            bin_ind = CheckBin(desc_vals[bin_bounds[0]],bin_bounds[1],nBits,fp=True)
             for i in range(0,nBits):
                 if i < bin_ind:
                     desc_fp.append(1)
@@ -252,8 +239,8 @@ def PROD_BIT_FP(desc_vals,na_names,bin_lims_list,nBits):
                     desc_fp.append(0)
         fp = np.asarray(desc_fp)
     else:
-        for bin_lims in bin_lims_list:
-            if desc_vals[bin_lims[0]].iloc[0] >= bin_lims[1][0]:
+        for bin_bounds in bin_bounds_list:
+            if desc_vals[bin_bounds[0]].iloc[0] >= bin_bounds[1][0]:
                 desc_fp.append(1)
             else:
                 desc_fp.append(0)
@@ -262,7 +249,7 @@ def PROD_BIT_FP(desc_vals,na_names,bin_lims_list,nBits):
 
 #-------MODEL VALIDATION-------#     
 
-def VAL_PREDS(result,probas,act,names):
+def MdlVal(result,probas,act,names):
     """
     Evaluates model predictions.
     """
@@ -279,12 +266,12 @@ def VAL_PREDS(result,probas,act,names):
     f_neg = [(names[ind],act[ind]) for ind,pred in enumerate(result) if pred == 0 and act[ind] == 1]
     return(pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg)
 
-def TEST_VAL(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
+def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
     """
     Calculates performance measures.
     """
     # Calculation of performance measures.
-    pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg = VAL_PREDS(result,probas,test_act,test_names)
+    pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg = MdlVal(result,probas,test_act,test_names)
     acc = (true_pos+true_neg)/len(test_act) 
     prec = true_pos/(true_pos+false_pos)
     f_meas = 2*(prec*acc)/(prec+acc) 
@@ -299,7 +286,7 @@ def TEST_VAL(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
         
 #-------VALIDATION OUTPUT-------#             
 
-def PROD_FP_FN_OUT_STRING(max_name_len,pred_list,pred_type,fold=0,probs=[]):
+def ProdFpFnOutString(max_name_len,pred_list,pred_type,fold=0,probs=[]):
     """
     Creates output string that is used to save False Positives and
     False Negatives.
@@ -329,7 +316,7 @@ def PROD_FP_FN_OUT_STRING(max_name_len,pred_list,pred_type,fold=0,probs=[]):
             outString = outString + str(probs[ind]) + "\n"
     return(outString+"\n")        
 
-def PROD_FP_FN_CSV_PCK(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
+def ProdFpFnCSV(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
                    t_pos_prob=[],t_pos_name_prob=[],t_neg_name_prob=[],vali="EXT"):
     """
     Writes .csv file of False Positives and False Negatives of external validations.
@@ -344,8 +331,8 @@ def PROD_FP_FN_CSV_PCK(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
             max_name_len = max(max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_pos]),max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_neg]))
             for i,fold in enumerate(f_pos):
                 outString = outString + "Fold {}:\n".format(i) 
-                outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,fold,"False Positives",fold=1)
-                outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,f_neg[i],"False Negatives",fold=1)
+                outString = outString + ProdFpFnOutString(max_name_len,fold,"False Positives",fold=1)
+                outString = outString + ProdFpFnOutString(max_name_len,f_neg[i],"False Negatives",fold=1)
                 outString = outString + "\n\n"
         elif vali == "TEST" or vali == "EXT":
             if f_pos:
@@ -367,15 +354,15 @@ def PROD_FP_FN_CSV_PCK(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
             
             max_name_len = max(max_name_len_pos,max_name_len_neg,max_name_len_t_pos,max_name_len_t_neg)
             
-            outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,f_pos,"False Positives",probs=f_pos_prob)
-            outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,f_neg,"False Negatives",probs=f_neg_prob)
+            outString = outString + ProdFpFnOutString(max_name_len,f_pos,"False Positives",probs=f_pos_prob)
+            outString = outString + ProdFpFnOutString(max_name_len,f_neg,"False Negatives",probs=f_neg_prob)
             
-            outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,[(tup[0],1) for tup in t_pos_name_prob],"True Positives",probs=[tup[1] for tup in t_pos_name_prob])
-            outString = outString + PROD_FP_FN_OUT_STRING(max_name_len,[(tup[0],0) for tup in t_neg_name_prob],"True Negatives",probs=[tup[1] for tup in t_neg_name_prob])
+            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],1) for tup in t_pos_name_prob],"True Positives",probs=[tup[1] for tup in t_pos_name_prob])
+            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],0) for tup in t_neg_name_prob],"True Negatives",probs=[tup[1] for tup in t_neg_name_prob])
             outString = outString + "\n\n"
         file.write(outString)
 
-def PROD_EXT_PERF_TAB_PCK(acc,f_meas,f_neg,num_mols):
+def ProdExtPerfTab(acc,f_meas,f_neg,num_mols):
     """
     Creates .xlsx file of performance measures of external validation.
     """
@@ -406,44 +393,55 @@ def ProdFP(smiles="",filepath="",id_name="",smiles_pos=-1,id_pos=-1,skip_first=F
     """
     # load input smiles, 
     if smiles:
-        inp_mols = SMILES_TO_MOLS([smiles])
+        inp_mols = SmilesToMols([smiles])
     if filepath:
         fe = filepath.split(".")[-1]
         if fe == "csv":
-            smiles,ids = DATA_FROM_CSV(filepath,smiles_pos=smiles_pos,
+            smiles,ids = DataFromCSV(filepath,smiles_pos=smiles_pos,
                                               id_pos=id_pos,skip_first=skip_first)
-            inp_mols = SMILES_TO_MOLS(smiles)
+            inp_mols = SmilesToMols(smiles)
         elif fe == "sdf":
-            inp_mols,ids = MOLS_FROM_SDF(filepath,id_name=id_name)
+            inp_mols,ids = MolsFromSDF(filepath,id_name=id_name)
         else:
             print("Please specify valid filetype (.csv or .sdf)")
     
     # calculate descriptors
     print("Calculating Descriptors...", end="",flush=True) 
-    na_names,mi_dse_names = READ_CLS_DESC("2D+3D")
+    na_names,mi_dse_names = ReadClassDesc()
     keep_desc_names = na_names + mi_dse_names
-    inp_df  = DF_PROD_DESCS("2D+3D",inp_mols[:10],keep_desc_names=keep_desc_names)
+    inp_df  = ProdDescDF("2D+3D",inp_mols[:10],keep_desc_names=keep_desc_names)
     print("Done", end="\n")
-    
+    ###
+    ids = ids[:10]
+    ###
     print("Removing Molecules Producing Desriptor Errors...", end="",flush=True) 
     drop_rows = []
     for i,row in inp_df.iterrows():
         for desc in mi_dse_names:
-            if not IS_TYPE(row[desc]):
+            if not IsType(row[desc]):
                 drop_rows.append(i)
     inp_df.drop(drop_rows,inplace=True)
     print("Done", end="\n")
 
     print("Producing {} Fingerprints...".format("2D+3D"), end="",flush=True)
     # featch bin boundaries
-    bin_lims = READ_BIN_LIMS("2D+3D",8,"ma")
+    bin_bounds = ReadBinBounds()
     # calculate fingerprints
-    inp_df["Fingerprints"] = inp_df.apply(PROD_BIT_FP,args=(na_names,bin_lims,8),axis=1)
+    inp_df["Fingerprints"] = inp_df.apply(ProdBitFP,args=(na_names,bin_bounds,8),axis=1)
     inp_df["ID"] = ids
     print("Done", end="\n")
     return(inp_df)
     
-def BbbPred(fps,ids,act=[],filepath = "model",filename="bbbRf.sav",ret=False):
+def BbbPred(fps,ids,act=[],ret=False):
+    """
+    Performs predictions for given fingerprints. 
+    In case activities are supplied a prediction evaluation is performed
+    and its results saved to a .csv and an .xlsx file.
+    
+    fps: fingerprints to predict
+    ids: IDs of molecules 
+    act: activities of molecules
+    """
     # fetch model
     dir_path = os.path.dirname(os.path.realpath(__file__))
     bbbRf = joblib.load(os.path.join(dir_path,"model","bbbRf.sav"))
@@ -453,12 +451,12 @@ def BbbPred(fps,ids,act=[],filepath = "model",filename="bbbRf.sav",ret=False):
     # report
     if act:
         # in case activity is supplied, performance metrics are calculated
-        acc,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TEST_VAL(result,probas,act,ids)
+        acc,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TestVal(result,probas,act,ids)
         #        
-        PROD_FP_FN_CSV_PCK(f_pos,f_neg,f_pos_prob=f_ppr,f_neg_prob=f_npr,
+        ProdFpFnCSV(f_pos,f_neg,f_pos_prob=f_ppr,f_neg_prob=f_npr,
                               t_pos_name_prob=t_pnpr,t_neg_name_prob=t_npr)  
         #
-        PROD_EXT_PERF_TAB_PCK(acc,f_meas,f_neg,len(act))
+        ProdExtPerfTab(acc,f_meas,f_neg,len(act))
     else:
         if ret:
             return(ids,result,probas)
