@@ -3,12 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "example_package_bbb"
-version = "0.0.1"
+name = "bbbPackage"
+version = "1.0"
 authors = [
-  { name="Frederic Dehnbostel", email="author@example.com" },
+  { name="Frederic Dehnbostel", email="fredericdehnbostel@example.com" },
 ]
-description = "A small example package"
+description = "Package to produce Blood-Brain barrier MI-DSE fingerprints for compounds supplied as SMILES string,
+			   .sdf, or .csv file and predict their Blood-Brain barrier permeability. Predictions are made by the 
+			   best performing model of 'PAPER NAME'."
 readme = "README.md"
 requires-python = ">=3.9.15"
 classifiers = [
@@ -25,6 +27,6 @@ dependencies = [
   "mordred>=1.2.0"
 ]
 
-[project.urls]
-"Homepage" = ""
-"Bug Tracker" = ""
+#[project.urls]
+#"Homepage" = ""
+#"Bug Tracker" = ""

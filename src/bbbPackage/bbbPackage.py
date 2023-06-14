@@ -48,13 +48,15 @@ def SmilesToMols(smilesList):
 
 #----DATASET FETCHING----#
 
-def DataFromCSV(filepath,smiles_pos=1,
-                  id_pos=0,skip_first=False):
+def DataFromCSV(filepath,smiles_pos,
+                  id_pos,act_pos,
+                  skip_first):
     """
     Retrieves smiles and ids from .csv file.
     """
     smiles = []
     ids = []
+    act = []
     with open(filepath,"r") as file:
         reader = csv.reader(file,delimiter=",")
         if skip_first:
@@ -62,22 +64,32 @@ def DataFromCSV(filepath,smiles_pos=1,
         for row in reader:
             smiles.append(row[smiles_pos])
             ids.append(row[id_pos])
-    return(smiles,ids)
+            if act_pos > -1:
+                act.append(row[act_pos])
+    return(smiles,ids,act)
     
-def MolsFromSDF(filepath,id_name="ID"):
+    
+def MolsFromSDF(filepath,id_name,act_name):
     """
     Fetching molecules from .sdf files.
     """
     with Chem.SDMolSupplier(filepath) as suppl:
         mols = []
         ids = []
+        act = []
         for i,mol in enumerate(suppl):
             mols.append(mol)
             try:
                 ids.append(mol.GetProp(id_name)) 
             except KeyError:
                 ids.append("mol. {}".format(i))
-    return(mols,ids)
+            if act_name:
+                try:
+                    act.append(mol.GetProp(act_name)) 
+                except KeyError:
+                    print("Property holding activity not available!")
+    return(mols,ids,act)
+   
 
 #----FETCHING DESCRIPTOR NAMES AND BIN BOUNDARIES----#
 
@@ -385,7 +397,7 @@ def ProdExtPerfTab(acc,f_meas,f_neg,num_mols):
 
 #-------VALIDATION OUTPUT-------#             
     
-def ProdFP(smiles="",filepath="",id_name="",smiles_pos=-1,id_pos=-1,skip_first=False):
+def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,act_pos= -1,skip_first=False):
     """
     Produces Fingerprints for given SMILES, .csv containing SMILES, or .sdf containing molecules.
     smiles_pos, and id_pos define the position of the SMILES string and ID in the .csv file.
@@ -397,23 +409,32 @@ def ProdFP(smiles="",filepath="",id_name="",smiles_pos=-1,id_pos=-1,skip_first=F
     if filepath:
         fe = filepath.split(".")[-1]
         if fe == "csv":
-            smiles,ids = DataFromCSV(filepath,smiles_pos=smiles_pos,
-                                              id_pos=id_pos,skip_first=skip_first)
+            smiles,ids,act = DataFromCSV(filepath,smiles_pos,
+                                     id_pos,act_pos,
+                                     skip_first)
             inp_mols = SmilesToMols(smiles)
         elif fe == "sdf":
-            inp_mols,ids = MolsFromSDF(filepath,id_name=id_name)
+            inp_mols,ids,act = MolsFromSDF(filepath,id_name,act_name=act_name)
         else:
             print("Please specify valid filetype (.csv or .sdf)")
+    
+    ###
+    inp_mols = inp_mols[:10]
+    ids = ids[:10]
+    ###
     
     # calculate descriptors
     print("Calculating Descriptors...", end="",flush=True) 
     na_names,mi_dse_names = ReadClassDesc()
     keep_desc_names = na_names + mi_dse_names
-    inp_df  = ProdDescDF("2D+3D",inp_mols[:10],keep_desc_names=keep_desc_names)
+    inp_df = ProdDescDF("2D+3D",inp_mols,keep_desc_names=keep_desc_names)
+    ####
+    inp_df["ID"] = ids
+    if act_name or act_pos > -1:
+        inp_df["Act"] = act
+    ####
     print("Done", end="\n")
-    ###
-    ids = ids[:10]
-    ###
+    
     print("Removing Molecules Producing Desriptor Errors...", end="",flush=True) 
     drop_rows = []
     for i,row in inp_df.iterrows():
@@ -427,12 +448,11 @@ def ProdFP(smiles="",filepath="",id_name="",smiles_pos=-1,id_pos=-1,skip_first=F
     # featch bin boundaries
     bin_bounds = ReadBinBounds()
     # calculate fingerprints
-    inp_df["Fingerprints"] = inp_df.apply(ProdBitFP,args=(na_names,bin_bounds,8),axis=1)
-    inp_df["ID"] = ids
+    inp_df["Fingerprint"] = inp_df.apply(ProdBitFP,args=(na_names,bin_bounds,8),axis=1)
     print("Done", end="\n")
     return(inp_df)
     
-def BbbPred(fps,ids,act=[],ret=False):
+def BbbPred(inp_df,act=False,ret=False):
     """
     Performs predictions for given fingerprints. 
     In case activities are supplied a prediction evaluation is performed
@@ -445,6 +465,13 @@ def BbbPred(fps,ids,act=[],ret=False):
     # fetch model
     dir_path = os.path.dirname(os.path.realpath(__file__))
     bbbRf = joblib.load(os.path.join(dir_path,"model","bbbRf.sav"))
+    
+    #
+    fps = inp_df["Fingerprint"].tolist()
+    ids = inp_df["ID"].tolist()
+    if act:
+        act = inp_df["Act"].tolist()
+    
     # perform prediction
     result = bbbRf.predict(fps)
     probas = bbbRf.predict_proba(fps)
