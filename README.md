@@ -64,7 +64,7 @@ By default False.<br/>
 ```python
 import os
 import bbbPackage
-<!--- specifying filepath --->
+# comment
 filepath = os.path.join("dir1","input.csv")
 
 
