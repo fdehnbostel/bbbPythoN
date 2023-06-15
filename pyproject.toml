@@ -8,9 +8,7 @@ version = "1.0"
 authors = [
   { name="Frederic Dehnbostel", email="fredericdehnbostel@example.com" },
 ]
-description = "Package to produce Blood-Brain barrier MI-DSE fingerprints for compounds supplied as SMILES string,
-			   .sdf, or .csv file and predict their Blood-Brain barrier permeability. Predictions are made by the 
-			   best performing model of 'PAPER NAME'."
+description = "Package to produce Blood-Brain barrier MI-DSE fingerprints for compounds supplied as SMILES string,.sdf, or .csv file and predict their Blood-Brain barrier permeability. Predictions are made by the best performing model of 'PAPER NAME'."
 readme = "README.md"
 requires-python = ">=3.9.15"
 classifiers = [

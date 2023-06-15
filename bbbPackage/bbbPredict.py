@@ -60,15 +60,14 @@ def DataFromCSV(filepath,smiles_pos,
     with open(filepath,"r") as file:
         reader = csv.reader(file,delimiter=",")
         if skip_first:
-            reader.next()
+            next(reader)
         for row in reader:
             smiles.append(row[smiles_pos])
             ids.append(row[id_pos])
             if act_pos > -1:
-                act.append(row[act_pos])
+                act.append(int(row[act_pos]))
     return(smiles,ids,act)
-    
-    
+       
 def MolsFromSDF(filepath,id_name,act_name):
     """
     Fetching molecules from .sdf files.
@@ -85,11 +84,11 @@ def MolsFromSDF(filepath,id_name,act_name):
                 ids.append("mol. {}".format(i))
             if act_name:
                 try:
-                    act.append(mol.GetProp(act_name)) 
+                    act.append(int(mol.GetProp(act_name))) 
                 except KeyError:
                     print("Property holding activity not available!")
-    return(mols,ids,act)
-   
+                    act.append(None) 
+    return(mols,ids,act)   
 
 #----FETCHING DESCRIPTOR NAMES AND BIN BOUNDARIES----#
 
@@ -116,7 +115,7 @@ def ReadClassDesc():
     """  
     mi_dse_names = []
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    with open(os.path.join(dir_path,"desc_names","mi_dse_descs.csv"),"r") as file:
+    with open(os.path.join(dir_path,"desc_names","mi-dse_descs.csv"),"r") as file:
         reader = csv.reader(file,delimiter = "\n")
         for row in reader:
             row_split = row[0].split(",")
@@ -144,7 +143,7 @@ def Calc3D(mol):
         try:
             res = rdForceFieldHelpers.MMFFOptimizeMolecule(mol_3d,maxIters=200)
             if res == 1:                                          
-                res = rdForceFieldHelpers.MMFFOptimizeMolecule(mol_3d,maxIters=10000) 
+                res = rdForceFieldHelpers.MMFFOptimizeMolecule(mol_3d,maxIters=1000) 
         except ValueError:
             mol_3d = "err"
     else:
@@ -188,7 +187,8 @@ def Get3DDescNames():
     """
     Retrieves the names of 3D descriptors.
     """
-    descs_3D, descs_2D = Calculator(descriptors, ignore_3D=False).descriptors, Calculator(descriptors, ignore_3D=True).descriptors
+    descs_3D, descs_2D = Calculator(descriptors, ignore_3D=False).descriptors, \
+                         Calculator(descriptors, ignore_3D=True).descriptors
     descs_3D_names = [str(desc) for desc in descs_3D if desc not in descs_2D]
     return(descs_3D_names)
 
@@ -208,19 +208,13 @@ def ProdDescDF(desc_dim,mols,keep_desc_names=[]):
     
 #------Fingerprinting------#
 
-def CheckBin(val,bin_bounds,nBins,fp=False):
+def CheckBin(val,bin_bounds,nBins):
     """
     Allocates a descriptor of a molecule to a bin based on its value.
     """
-    if fp:
-        max_ret_bin = nBins
-        min_bin = 0
-        ret_bin = 1
-    else:
-        max_ret_bin = nBins-1
-        min_bin = 1
-        ret_bin = 0
-        
+    max_ret_bin = nBins
+    min_bin = 0
+    ret_bin = 1
     if val > bin_bounds[-1]:
         return(max_ret_bin)
     elif val <= bin_bounds[min_bin]:
@@ -243,7 +237,7 @@ def ProdBitFP(desc_vals,na_names,bin_bounds_list,nBits):
                 desc_fp.append(1)
     if nBits != 1:
         for bin_bounds in bin_bounds_list:
-            bin_ind = CheckBin(desc_vals[bin_bounds[0]],bin_bounds[1],nBits,fp=True)
+            bin_ind = CheckBin(desc_vals[bin_bounds[0]],bin_bounds[1],nBits)
             for i in range(0,nBits):
                 if i < bin_ind:
                     desc_fp.append(1)
@@ -267,23 +261,26 @@ def MdlVal(result,probas,act,names):
     """
     # Calculation of correct and false predictions
     pos_probas = [x[1] for x in probas]
-    right_preds, false_preds = [pred for ind,pred in enumerate(result) if pred == act[ind]], [pred for ind,pred in enumerate(result) if pred != act[ind]]
+    right_preds, false_preds = [pred for ind,pred in enumerate(result) if pred == act[ind]], \
+                               [pred for ind,pred in enumerate(result) if pred != act[ind]]
     true_pos, true_neg = sum(right_preds), len(right_preds) - sum(right_preds)
-    false_pos, false_neg = sum(false_preds), len(false_preds) - sum(false_preds) 
+    false_pos, false_neg = sum(false_preds), len(false_preds) - sum(false_preds)
     pos_act, neg_act = sum(act), len(act) - sum(act)
     # Calculation of positive and negative predictions
     pos_preds, neg_preds = sum(result), len(result) - sum(result)
     # Saving names of false positives and false negatives of each Kfold 
     f_pos = [(names[ind],act[ind]) for ind,pred in enumerate(result) if pred == 1 and act[ind] == 0] 
     f_neg = [(names[ind],act[ind]) for ind,pred in enumerate(result) if pred == 0 and act[ind] == 1]
-    return(pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg)
+    return(pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, 
+           false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg)
 
 def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
     """
     Calculates performance measures.
     """
     # Calculation of performance measures.
-    pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg = MdlVal(result,probas,test_act,test_names)
+    pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, \
+    false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg = MdlVal(result,probas,test_act,test_names)
     acc = (true_pos+true_neg)/len(test_act) 
     prec = true_pos/(true_pos+false_pos)
     f_meas = 2*(prec*acc)/(prec+acc) 
@@ -292,8 +289,10 @@ def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
     f_neg_probas = [round(float(str(probas[test_names.index(tup[0])][0])[:5]),3) for tup in f_neg]
     f_pos_names = [tup[0] for tup in f_pos]
     f_neg_names = [tup[0] for tup in f_neg]
-    t_pos_name_prob = [(test_names[ind],round(float(str(probas[ind][1])[:5]),3)) for ind,res in enumerate(result) if res == 1 and test_names[ind] not in f_pos_names]
-    t_neg_name_prob = [(test_names[ind],round(float(str(probas[ind][0])[:5]),3)) for ind,res in enumerate(result) if res == 0 and test_names[ind] not in f_neg_names]
+    t_pos_name_prob = [(test_names[ind],round(float(str(probas[ind][1])[:5]),3)) for ind,res in enumerate(result) if 
+                        res == 1 and test_names[ind] not in f_pos_names]
+    t_neg_name_prob = [(test_names[ind],round(float(str(probas[ind][0])[:5]),3)) for ind,res in enumerate(result) if 
+                        res == 0 and test_names[ind] not in f_neg_names]
     return(acc,f_meas,f_pos,f_neg,f_pos_probas,f_neg_probas,t_pos_name_prob,t_neg_name_prob)
         
 #-------VALIDATION OUTPUT-------#             
@@ -340,7 +339,8 @@ def ProdFpFnCSV(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
     with open(filename,"w") as file:
         outString = ""
         if vali == "KFOLD":
-            max_name_len = max(max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_pos]),max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_neg]))
+            max_name_len = max(max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_pos]), \
+                           max([len(max(fold, key=lambda tup: len(tup[0]))[0]) if fold else 0 for fold in f_neg]))
             for i,fold in enumerate(f_pos):
                 outString = outString + "Fold {}:\n".format(i) 
                 outString = outString + ProdFpFnOutString(max_name_len,fold,"False Positives",fold=1)
@@ -369,8 +369,10 @@ def ProdFpFnCSV(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
             outString = outString + ProdFpFnOutString(max_name_len,f_pos,"False Positives",probs=f_pos_prob)
             outString = outString + ProdFpFnOutString(max_name_len,f_neg,"False Negatives",probs=f_neg_prob)
             
-            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],1) for tup in t_pos_name_prob],"True Positives",probs=[tup[1] for tup in t_pos_name_prob])
-            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],0) for tup in t_neg_name_prob],"True Negatives",probs=[tup[1] for tup in t_neg_name_prob])
+            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],1) for tup in t_pos_name_prob],
+                                                      "True Positives",probs=[tup[1] for tup in t_pos_name_prob])
+            outString = outString + ProdFpFnOutString(max_name_len,[(tup[0],0) for tup in t_neg_name_prob],
+                                                      "True Negatives",probs=[tup[1] for tup in t_neg_name_prob])
             outString = outString + "\n\n"
         file.write(outString)
 
@@ -418,11 +420,6 @@ def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,
         else:
             print("Please specify valid filetype (.csv or .sdf)")
     
-    ###
-    inp_mols = inp_mols[:10]
-    ids = ids[:10]
-    ###
-    
     # calculate descriptors
     print("Calculating Descriptors...", end="",flush=True) 
     na_names,mi_dse_names = ReadClassDesc()
@@ -466,7 +463,7 @@ def BbbPred(inp_df,act=False,ret=False):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     bbbRf = joblib.load(os.path.join(dir_path,"model","bbbRf.sav"))
     
-    #
+    # fetching fingerprints, ids from dataframe
     fps = inp_df["Fingerprint"].tolist()
     ids = inp_df["ID"].tolist()
     if act:
@@ -475,18 +472,19 @@ def BbbPred(inp_df,act=False,ret=False):
     # perform prediction
     result = bbbRf.predict(fps)
     probas = bbbRf.predict_proba(fps)
-    # report
     if act:
         # in case activity is supplied, performance metrics are calculated
         acc,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TestVal(result,probas,act,ids)
-        #        
+        # produces .csv file listing True Positives, True Negatives, False Positives, 
+        # and False Negatives       
         ProdFpFnCSV(f_pos,f_neg,f_pos_prob=f_ppr,f_neg_prob=f_npr,
                               t_pos_name_prob=t_pnpr,t_neg_name_prob=t_npr)  
-        #
+        # produces .xlsx file of performance metrics
         ProdExtPerfTab(acc,f_meas,f_neg,len(act))
+    if ret:
+        return(ids,result,probas)
     else:
-        if ret:
-            return(ids,result,probas)
-        else:
-            for i, pred in enumerate(result):
-                print("Molecule {} prediction: {} (Prob.: {})".format(ids[i],pred,probas[i]))
+        if not act:
+            act = [None for id in ids]
+        for i, pred in enumerate(result):
+            print("Molecule {} prediction: {} (Prob.: {}); Activity: {}".format(ids[i],pred,probas[i],act[i]))
