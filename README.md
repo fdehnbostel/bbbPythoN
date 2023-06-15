@@ -63,7 +63,7 @@ By default False.<br/>
 ## Examples <a name="Examples"></a>
 ```python
 import os
-import bbbPackage
+from bbbPackage import bbbPredict
 # Defining filepath of input .csv. 
 filepath_csv = os.path.join("dir1","input.csv")
 # Defining filepath of input .sdf.
@@ -74,17 +74,17 @@ if __name__ == '__main__':
 # Calculating fingerprints and specifying position of SMILES, ID, and activity in .csv rows.
 # In case no activities are available omit act_pos. 
 # In case a first row containing column names is present set skip_first=True.
-	csv_fp_df = ProdFP(filepath=filepath_csv,smiles_pos=1,id_pos=0,act_pos= 2,skip_first=False)
+	csv_fp_df = bbbPredict.ProdFP(filepath=filepath_csv,smiles_pos=1,id_pos=0,act_pos= 2,skip_first=False)
 # Calculating fingerprints and molecule properties holding SMILES, ID and activity in .sdf file.
 # In case no activities are available omit act_name.
-	sdf_fp_df = ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
+	sdf_fp_df = bbbPredict.ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
 # Predicting bbb-permeability of .csv compounds. 
 # If act=True, a .csv file listing True Positives, True Negatives, False Positives, and 
 #False Negatives and a .xlsx containing performance metrics are produced.
 # Setting ret=True, returns the IDs, predictions (result), and prediction probabilities (probas).
-	ids, result, probas = BbbPred(csv_fp_df,act=True,ret=True)
+	ids, result, probas = bbbPredict.BbbPred(csv_fp_df,act=True,ret=True)
 # If ret=False the molecules's IDs, predictions, and prediction probabilities are printed.
-	BbbPred(csv_fp_df,ret=False)
+	bbbPredict.BbbPred(csv_fp_df,ret=False)
 ```
 ## Files <a name="Files"></a>
 
