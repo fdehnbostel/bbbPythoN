@@ -24,7 +24,3 @@ dependencies = [
   "rdkit>=2022.09.1",
   "mordred>=1.2.0"
 ]
-
-#[project.urls]
-#"Homepage" = ""
-#"Bug Tracker" = ""

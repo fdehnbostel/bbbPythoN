@@ -145,9 +145,9 @@ def Calc3D(mol):
             if res == 1:                                          
                 res = rdForceFieldHelpers.MMFFOptimizeMolecule(mol_3d,maxIters=1000) 
         except ValueError:
-            mol_3d = "err"
+            mol_3d = None
     else:
-        mol_3d = "err"
+        mol_3d = None
     return(mol_3d)
     
 def Prod3DMols(mols):
@@ -159,7 +159,7 @@ def Prod3DMols(mols):
         mols_3d.append(Calc3D(mol))
     return(mols_3d)
          
-def CalcDesc3D(mols,midse_desc_names=[]):
+def CalcDesc3D(mols,act=[],ids=[],midse_desc_names=[]):
     """
     Calculates 3D descriptors of given molecules.
     """
@@ -167,9 +167,17 @@ def CalcDesc3D(mols,midse_desc_names=[]):
     calc = Calculator(descriptors, ignore_3D=False)
     if midse_desc_names:
         calc.descriptors = [desc for desc in calc.descriptors if str(desc) in midse_desc_names]
-    mols = [mol for mol in mols if mol != "err"]
+    if act:
+        act = [act[i] for i,mol in enumerate(mols) if mol is not None]
+    if ids:
+        ids = [ids[i] for i,mol in enumerate(mols) if mol is not None]
+    mols = [mol for mol in mols if mol is not None]
     # calculating 2D and 3D desriptors for given molecules
     df = calc.pandas(mols)
+    if act:
+        df["Act"] = act
+    if ids:
+        df["ID"] = ids
     return(df)    
         
 def CalcDesc2D(mols,midse_desc_names=[]):
@@ -192,15 +200,19 @@ def Get3DDescNames():
     descs_3D_names = [str(desc) for desc in descs_3D if desc not in descs_2D]
     return(descs_3D_names)
 
-def ProdDescDF(desc_dim,mols,keep_desc_names=[]):
+def ProdDescDF(desc_dim,mols,act=[],ids=[],keep_desc_names=[]):
     """
     Creates pandas dataframe containing descriptors of specified 
     dimension.
     """
     if desc_dim == "2D":
         df = CalcDesc2D(mols,midse_desc_names=keep_desc_names)
+        if act:
+            df["Act"] = act
+        if ids:
+            df["ID"] = ids
     elif desc_dim == "3D" or desc_dim == "2D+3D":
-        df = CalcDesc3D(mols,midse_desc_names=keep_desc_names)
+        df = CalcDesc3D(mols,act=act,ids=ids,midse_desc_names=keep_desc_names)
         if desc_dim == "3D" and not keep_desc_names:
             # getting dataframe only consisting of 3D descriptors
             df = df[Get3DDescNames()]
@@ -295,7 +307,46 @@ def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
                         res == 0 and test_names[ind] not in f_neg_names]
     return(acc,f_meas,f_pos,f_neg,f_pos_probas,f_neg_probas,t_pos_name_prob,t_neg_name_prob)
         
-#-------VALIDATION OUTPUT-------#             
+#-------VALIDATION OUTPUT-------#    
+
+def MahDist(x,y,cov_mat_inv):
+    """
+    Calculates the Mahalanobis Distance between the fingerprints of two molecules.
+    """
+    # creation of matrix epq which consists of differences between single descriptors of molecule x and y  
+    epq = np.asarray([x_desc - y[ind] for ind,x_desc in enumerate(x)])
+    # calculating mahalanobis distance between molecules x and y
+    md = np.dot(cov_mat_inv,epq)
+    md = np.dot(np.transpose(epq),md)
+    md = np.sqrt(md)
+    md = round(md,3)
+    return(md)	         
+
+def CalcMahDists(inp_df):
+    """
+    Calculates Mahalanobis Distance for every input molecule.
+    """
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    # fetching Mahalanobis distance information
+    train_mv,train_cmi,train_ad = joblib.load(os.path.join(dir_path,"mah_dist_info",
+                                             "train_mah-dist_info_2D+3D_ma"))
+                                      
+    train_amv,train_acmi,train_aad = joblib.load(os.path.join(dir_path,"mah_dist_info",
+                                             "train_act_mah-dist_info_2D+3D_ma"))
+    
+    # fetching names of descriptors used in the MI-DSE fingerprint
+    na_names,mi_dse_names = ReadClassDesc()
+    descs_df = inp_df[mi_dse_names]
+    
+    # calculating distances 
+    mah_dists = []
+    mah_dists_act = []
+    for i in range(descs_df.shape[0]):
+        desc_row = descs_df.iloc[i].values.tolist()
+        mah_dists.append(MahDist(desc_row,train_mv,train_cmi))
+        mah_dists_act.append(MahDist(desc_row,train_amv,train_acmi))
+
+    return(mah_dists,mah_dists_act)
 
 def ProdFpFnOutString(max_name_len,pred_list,pred_type,fold=0,probs=[]):
     """
@@ -424,12 +475,7 @@ def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,
     print("Calculating Descriptors...", end="",flush=True) 
     na_names,mi_dse_names = ReadClassDesc()
     keep_desc_names = na_names + mi_dse_names
-    inp_df = ProdDescDF("2D+3D",inp_mols,keep_desc_names=keep_desc_names)
-    ####
-    inp_df["ID"] = ids
-    if act_name or act_pos > -1:
-        inp_df["Act"] = act
-    ####
+    inp_df = ProdDescDF("2D+3D",inp_mols,act=act,ids=ids,keep_desc_names=keep_desc_names)
     print("Done", end="\n")
     
     print("Removing Molecules Producing Desriptor Errors...", end="",flush=True) 
@@ -454,10 +500,6 @@ def BbbPred(inp_df,act=False,ret=False):
     Performs predictions for given fingerprints. 
     In case activities are supplied a prediction evaluation is performed
     and its results saved to a .csv and an .xlsx file.
-    
-    fps: fingerprints to predict
-    ids: IDs of molecules 
-    act: activities of molecules
     """
     # fetch model
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -466,12 +508,17 @@ def BbbPred(inp_df,act=False,ret=False):
     # fetching fingerprints, ids from dataframe
     fps = inp_df["Fingerprint"].tolist()
     ids = inp_df["ID"].tolist()
+   
     if act:
         act = inp_df["Act"].tolist()
     
     # perform prediction
     result = bbbRf.predict(fps)
     probas = bbbRf.predict_proba(fps)
+    
+    # calculating Mahalanobis Distance to training center of query molecules
+    mah_dists,mah_dists_act = CalcMahDists(inp_df) 
+    
     if act:
         # in case activity is supplied, performance metrics are calculated
         acc,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TestVal(result,probas,act,ids)
@@ -487,4 +534,7 @@ def BbbPred(inp_df,act=False,ret=False):
         if not act:
             act = [None for id in ids]
         for i, pred in enumerate(result):
-            print("Molecule {} prediction: {} (Prob.: {}); Activity: {}".format(ids[i],pred,probas[i],act[i]))
+            print("""Molecule {} prediction: {} (Prob.: {}); Activity: {}
+                 Distance to Training Set Center: {}
+                 Distance to Training Set Actives Center: {}\n""".format(ids[i],pred,
+                   probas[i],act[i],mah_dists[i],mah_dists_act[i]))
