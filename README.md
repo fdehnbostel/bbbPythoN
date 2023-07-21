@@ -27,7 +27,7 @@ joblib, numpy, pandas, openpyxl, rdkit, mordred <br/>
 
 ## Functionalities <a name="Functionalities"></a>
 This package consists of the functionalities necessary to create the Blood-Brain barrier (bbb) MI-DSE<br/> 
-Fingerprints described in "PAPERNAME" for a given SMILES, set of SMILES or set of molecules supplied<br/>  
+Fingerprints described in "PAPERNAME" for a given SMILES, set of SMILES or set of molecules supplied<br/>
 via .sdf and predict their bbb-permeability.<br/>
 
 Function ProdFP() produces the aforementioned fingerprints and accepts either a single SMILES string, a .csv<br/> 
@@ -118,10 +118,10 @@ mi-dse_descs.csv: contains the names of the descriptors chosen by MI-DSE feature
 na_descs.csv: contains the names of descriptors chosen based on their discrepancy in relative<br/> 
 frequency of absence between classes.<br/>
 \
-train\_act\_mah-dist\_info\_2D+3D\_ma: contains information necessary for the compuation of the<br/> 
+train_act_mah-dist_info_2D+3D_ma: contains information necessary for the compuation of the<br/> 
 Mahalanobis distance between the center of the training set actives and the query molecules.<br/> 
 \
-train_mah-dist_info_2D+3D_ma contains information necessary for the compuation of the<br/> 
+train_mah-dist_info_2D+3D_ma: contains information necessary for the compuation of the<br/> 
 Mahalanobis distance between the center of the training set and the query molecules.<br/> 
 
 
