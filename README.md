@@ -33,6 +33,8 @@ via .sdf and predict their bbb-permeability.<br/>
 Function ProdFP() produces the aforementioned fingerprints and accepts either a single SMILES string, a .csv<br/> 
 file containing SMILES strings and their corresponding IDs, or a .sdf file containing molecules and their<br/>
 corresponding IDs. In both the latter cases activities can be supplied as well.<br/>
+ProdFP() returns a pandas Dataframe holding the descriptors the fingerprints are based on, the fingerprints<br/>
+as well as the corresponding IDs and activities.<br/>
 ProdFP() has the following keyword parameters:<br/> 
 \
 *smiles*:<br/> 
@@ -66,11 +68,11 @@ By default -1.<br/>
 only needed in case a .csv file is used as input. Whether to skip first line, in case column names are present.<br/>
 By default False.<br/>
 \
-ProdFP() returns a pandas Dataframe holding the descriptors the fingerprints are based on, the fingerprints<br/>
-as well as the corresponding IDs and activities.<br/>
 
+\
 The function BbbPred() predicts bbb-permeability based on the fingerprints contained in the output Dataframe<br/>
 of ProdFP(). Its parameters are<br/>
+\
 *inp_df*:<br/>
 corresponds to the Dataframe returned by ProdFP().<br/>
 \
