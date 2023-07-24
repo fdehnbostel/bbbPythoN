@@ -1,5 +1,7 @@
 
-# bbbPackage
+# bbbPythoN
+
+**License:** [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode)
 
 ### Table of Contents
 
@@ -9,11 +11,13 @@
 3. [Examples](#examples)
 4. [Files](#files)
 
+
 ## Overview <a name="overview"></a>
 bbbPythoN is a Python package for the prediction of Blood-Brain barrier (BBB) permeation of small molecules.<br/>
 Based on fingerprints encoding values of a pre-selected set of descriptors chosen for their discriminatory <br/>
 power in regard to BBB permeability, a random forest classifier predicts whether compounds are likely to <br/>
-cross the BBB. As it was shown in "PAPERNAME" our model is most suited for the prediction of passive permeation.<br/>
+cross the BBB. As it was shown in "Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of <br/>
+Drug-Like Compounds" our model is most suited for the prediction of passive permeation.<br/>
 Given a set of compounds, either as SMILES via command line input, a .csv file containing SMILES, or as <br/>
 .sdf file containing MolBlocks, fingerprints can be produced and the molecules' activity predicted via<br/>
 the random forest.<br/>
@@ -27,8 +31,9 @@ joblib, numpy, pandas, openpyxl, rdkit, mordred <br/>
 
 ## Functionalities <a name="Functionalities"></a>
 This package consists of the functionalities necessary to create the Blood-Brain barrier (bbb) MI-DSE<br/> 
-Fingerprints described in "PAPERNAME" for a given SMILES, set of SMILES or set of molecules supplied<br/>
-via .sdf and predict their bbb-permeability.<br/>
+Fingerprints described in "Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of Drug-<br/>
+Like Compounds" for a given SMILES, set of SMILES or set of molecules supplied via .sdf and predict<br/>
+their bbb-permeability.<br/>
 
 Function ProdFP() produces the aforementioned fingerprints and accepts either a single SMILES string, a .csv<br/> 
 file containing SMILES strings and their corresponding IDs, or a .sdf file containing molecules and their<br/>
@@ -62,7 +67,7 @@ By default -1.<br/>
 \
 *act_pos*:<br/>
 only needed in case a .csv file is used as input. Specifies the position of the activity in the file's rows.<br/>
-By default -1.<br/> 
+By default -1.<br/>
 \
 *skip_first*:<br/>
 only needed in case a .csv file is used as input. Whether to skip first line, in case column names are present.<br/>
@@ -87,7 +92,7 @@ By default False.<br/>
 ## Examples <a name="Examples"></a>
 ```python
 import os
-from bbbPackage import bbbPredict
+from bbbPythoN import bbbPythoN
 # Defining filepath of input .csv. 
 filepath_csv = os.path.join("dir1","input.csv")
 # Defining filepath of input .sdf.
@@ -98,17 +103,17 @@ if __name__ == '__main__':
 # Calculating fingerprints and specifying position of SMILES, ID, and activity in .csv rows.
 # In case no activities are available omit act_pos. 
 # In case a first row containing column names is present set skip_first=True.
-	csv_fp_df = bbbPredict.ProdFP(filepath=filepath_csv,smiles_pos=1,id_pos=0,act_pos= 2,skip_first=False)
+	csv_fp_df = bbbPythoN.ProdFP(filepath=filepath_csv,smiles_pos=1,id_pos=0,act_pos= 2,skip_first=False)
 # Calculating fingerprints and molecule properties holding SMILES, ID and activity in .sdf file.
 # In case no activities are available omit act_name.
-	sdf_fp_df = bbbPredict.ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
+	sdf_fp_df = bbbPythoN.ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
 # Predicting bbb-permeability of .csv compounds. 
 # If act=True, a .csv file listing True Positives, True Negatives, False Positives, and 
 #False Negatives and a .xlsx containing performance metrics are produced.
 # Setting ret=True, returns the IDs, predictions (result), and prediction probabilities (probas).
-	ids, result, probas = bbbPredict.BbbPred(csv_fp_df,act=True,ret=True)
+	ids, result, probas = bbbPythoN.BbbPred(csv_fp_df,act=True,ret=True)
 # If ret=False the molecules's IDs, predictions, and prediction probabilities are printed.
-	bbbPredict.BbbPred(csv_fp_df,ret=False)
+	bbbPythoN.BbbPred(csv_fp_df,ret=False)
 ```
 ## Files <a name="Files"></a>
 

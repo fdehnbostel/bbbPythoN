@@ -3,17 +3,17 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bbbPackage"
+name = "bbbPythoN"
 version = "1.0"
 authors = [
-  { name="Frederic Dehnbostel", email="fredericdehnbostel@example.com" },
+  { name="Frederic Dehnbostel", email="priyanka.banerjee@charite.de" },
 ]
-description = "Package to produce Blood-Brain barrier MI-DSE fingerprints for compounds supplied as SMILES string,.sdf, or .csv file and predict their Blood-Brain barrier permeability. Predictions are made by the best performing model of 'PAPER NAME'."
+description = "Package to produce Blood-Brain barrier MI-DSE fingerprints for compounds supplied as SMILES string,.sdf, or .csv file and predict their Blood-Brain barrier permeability. Predictions are made by the best performing model of 'Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of Drug-Like Compounds'."
 readme = "README.md"
 requires-python = ">=3.9.15"
+repository = ""
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -24,3 +24,5 @@ dependencies = [
   "rdkit>=2022.09.1",
   "mordred>=1.2.0"
 ]
+[metadata]
+license = "CC-BY-NC-ND-4.0"
