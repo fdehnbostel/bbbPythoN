@@ -70,7 +70,7 @@ def DataFromCSV(filepath,smiles_pos,
        
 def MolsFromSDF(filepath,id_name,act_name):
     """
-    Fetching molecules from .sdf files.
+    Fetching molecules from .sdf file.
     """
     with Chem.SDMolSupplier(filepath) as suppl:
         mols = []
