@@ -72,7 +72,7 @@ By default -1.<br/>
 *skip_first*:<br/>
 only needed in case a .csv file is used as input. Whether to skip first line, in case column names are present.<br/>
 By default False.<br/>
-\
+
 
 \
 The function BbbPred() predicts bbb-permeability based on the fingerprints contained in the output Dataframe<br/>
