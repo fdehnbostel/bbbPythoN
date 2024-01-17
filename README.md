@@ -108,7 +108,7 @@ if __name__ == '__main__':
 # In case no activities are available omit act_name.
 	sdf_fp_df = bbbPythoN.ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
 # It is advised to save the pandas DataFrames using .to_pickle() instead of .to_csv(), as the latter 
-# will cast the Fingerprints as python list objects to python strings. 
+# will cast the python list objects representing the Fingerprints to python strings. 
 	csv_fp_df.to_pickle(os.path.join("dir1","output.pkl"))
 	sdf_fp_df.to_pickle(os.path.join("dir2","output.pkl"))
 # Predicting bbb-permeability of .csv compounds. 
