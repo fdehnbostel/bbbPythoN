@@ -484,6 +484,11 @@ def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,
         for desc in mi_dse_names:
             if not IsType(row[desc]):
                 drop_rows.append(i)
+        for desc in na_names:
+            if isinstance(row[desc],float):
+                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 1
+            else:
+                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 0
     inp_df.drop(drop_rows,inplace=True)
     print("Done", end="\n")
 
