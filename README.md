@@ -107,6 +107,10 @@ if __name__ == '__main__':
 # Calculating fingerprints and molecule properties for compounds contained in .sdf file.
 # In case no activities are available omit act_name.
 	sdf_fp_df = bbbPythoN.ProdFP(filepath=filepath_sdf,id_name="ID",act_name="Act")
+# It is advised to save the pandas DataFrames using .to\_pickle() instead of .to\_csv(), as the latter 
+# will cast the Fingerprints that are saved as python list objects to python strings. 
+	csv_fp_df.to_pickle(os.path.join("dir1","output.pkl"))
+	sdf_fp_df.to_pickle(os.path.join("dir2","output.pkl"))
 # Predicting bbb-permeability of .csv compounds. 
 # If act=True, a .csv file listing True Positives, True Negatives, False Positives, and 
 # False Negatives and a .xlsx containing performance metrics are produced.
