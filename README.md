@@ -26,7 +26,7 @@ the random forests.<br/>
 
 ## Installation <a name="installation"></a>
 After downloading the bbbPackage-1.0-py3.whl file from the dist folder of the repository, the package can be<br/>
-installed via the command pip install filepath/bbbPackage-1.0-py3.whl. Where filepath corresponds to the path <br/>
+installed via the command pip install filepath/bbbPackage-1.0-py3-none-any.whl. Where filepath corresponds to the path <br/>
 to the folder the .whl file is located in.<br/>
 Additional packages used in this package will be installed as well and consist of: <br/> 
 joblib, numpy, pandas, openpyxl, rdkit, mordred <br/>
