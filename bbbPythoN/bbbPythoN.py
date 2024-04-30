@@ -37,36 +37,65 @@ def IsType(desc_value,wBool = 1):
         return(is_any)
 
 #----SMILES TO MOLS----#
-def SmilesToMols(smilesList):
+def CleanMol(mol):
+    """
+    from
+    https://bitsilla.com/blog/2021/06/standardizing-a-molecule-using-rdkit/    
+    and
+    https://www.blopig.com/blog/2022/05/molecular-standardization/
+    based on
+    https://github.com/greglandrum/RSC_OpenScience_Standardization_202104/blob/main/MolStandardize%20pieces.ipynb
+    
+    -Remove ions
+    -Remove salt
+    -Explicit hydrogen or implicit hydrogen
+    
+    -Aromatize benzene ring or kekule form
+    -Neutralize
+    """
+        
+    # save molecular properties before preprocessing
+    mol_props = [(name,mol.GetProp(name)) for name in mol.GetPropNames()]
+    
+    # removeHs, disconnect metal atoms, normalize and reionize the molecule
+    mol = rdMolStandardize.Cleanup(mol) 
+    
+    # kekulize
+    Chem.Kekulize(mol)
+    
+    # identify parent fragment and neutralize molecule
+    uncharger = rdMolStandardize.Uncharger() 
+    mol = uncharger.uncharge(rdMolStandardize.FragmentParent(mol))
+    
+    # reset the properties on molecule
+    for tup in mol_props:
+        mol.SetProp(tup[0],tup[1])
+
+    return(mol)
+    
+def SmilesToMol(smiles):
     """
     Produces molecule objects from SMILES.
     """
-    mols = []
-    for smiles in smilesList:
-         mols.append(Chem.MolFromSmiles(smiles))
-    return(mols)
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is not None:
+        mol = CleanMol(mol)
+        return(mol)
 
 #----DATASET FETCHING----#
 
-def DataFromCSV(filepath,smiles_pos,
-                  id_pos,act_pos,
-                  skip_first):
-    """
-    Retrieves smiles and ids from .csv file.
-    """
-    smiles = []
-    ids = []
-    act = []
-    with open(filepath,"r") as file:
-        reader = csv.reader(file,delimiter=",")
-        if skip_first:
-            next(reader)
-        for row in reader:
-            smiles.append(row[smiles_pos])
-            ids.append(row[id_pos])
-            if act_pos > -1:
-                act.append(int(row[act_pos]))
-    return(smiles,ids,act)
+def DataFromCSV(filepath,id_name,act_name,smiles_name):
+    # read csv file     
+    csv_df = pd.read_csv(filepath)
+    # calculate molecule objects from smiles
+    csv_df["Mol"] =  csv_df[smiles_name].apply(SmilesToMol)
+    # drop None / na molecules
+    csv_df.dropna(subset=[smiles_name,id_name,act_name,"Mol"],inplace=True)
+    # retrieving relevant columns
+    inp_mols = csv_df["Mol"].tolist()
+    ids = csv_df[id_name].tolist()
+    act = csv_df[act_name].tolist()
+    return(inp_mols,ids,act)
        
 def MolsFromSDF(filepath,id_name,act_name):
     """
@@ -77,28 +106,39 @@ def MolsFromSDF(filepath,id_name,act_name):
         ids = []
         act = []
         for i,mol in enumerate(suppl):
-            mols.append(mol)
-            try:
-                ids.append(mol.GetProp(id_name)) 
-            except KeyError:
-                ids.append("mol. {}".format(i))
-            if act_name:
-                try:
-                    act.append(int(mol.GetProp(act_name))) 
-                except KeyError:
-                    print("Property holding activity not available!")
-                    act.append(None) 
-    return(mols,ids,act)   
+            if mol is not None:
+                mol =  CleanMol(mol)
+                if mol is not None:
+                    mols.append(mol)
+                    try:
+                        ids.append(mol.GetProp(id_name)) 
+                    except KeyError:
+                        ids.append("mol. {}".format(i))
+                    if act_name:
+                        try:
+                            act.append(int(mol.GetProp(act_name))) 
+                        except KeyError:
+                            print("Property holding activity not available!")
+                            act.append(None)
+                else:
+                    print("Cleaning of Molecule with index {} resulted in None!".format(i))
+            else:
+                print("Molecule with index {} is None!".format(i))
+    return(mols,ids,act) 
 
 #----FETCHING DESCRIPTOR NAMES AND BIN BOUNDARIES----#
 
-def ReadBinBounds():
+def ReadBinBounds(use_bal):
     """
     Fetches the limits of the bins used for binary encoding of 
     MI-DSE descriptor values.
     """
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    filename = os.path.join(dir_path,"bin_bounds","bin_bounds.csv")    
+    if use_bal:
+        fn_suffix = "bal"
+    else:
+        fn_suffix = "imba"
+    filename = os.path.join(dir_path,"bin_bounds","bin_bounds_{}.csv".format(fn_suffix))    
     name = []
     bin_bounds = []
     with open(filename,"r") as file:
@@ -280,7 +320,7 @@ def MdlVal(result,probas,act,names):
     pos_act, neg_act = sum(act), len(act) - sum(act)
     # Calculation of positive and negative predictions
     pos_preds, neg_preds = sum(result), len(result) - sum(result)
-    # Saving names of false positives and false negatives of each Kfold 
+    # Saving names of false positives and false negatives 
     f_pos = [(names[ind],act[ind]) for ind,pred in enumerate(result) if pred == 1 and act[ind] == 0] 
     f_neg = [(names[ind],act[ind]) for ind,pred in enumerate(result) if pred == 0 and act[ind] == 1]
     return(pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, 
@@ -294,6 +334,8 @@ def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
     pos_probas, right_preds, false_preds, true_pos, true_neg, false_pos, \
     false_neg, pos_act, neg_act, pos_preds, neg_preds, f_pos, f_neg = MdlVal(result,probas,test_act,test_names)
     acc = (true_pos+true_neg)/len(test_act) 
+    sens = true_pos / (true_pos + false_neg)
+    spec = true_neg / (true_neg + false_pos)
     prec = true_pos/(true_pos+false_pos)
     f_meas = 2*(prec*acc)/(prec+acc) 
     # accuracy = sensitivity if no negatives are present in dataset
@@ -305,7 +347,7 @@ def TestVal(result,probas,test_act,test_names,ext_val=0,tp_tn=0):
                         res == 1 and test_names[ind] not in f_pos_names]
     t_neg_name_prob = [(test_names[ind],round(float(str(probas[ind][0])[:5]),3)) for ind,res in enumerate(result) if 
                         res == 0 and test_names[ind] not in f_neg_names]
-    return(acc,f_meas,f_pos,f_neg,f_pos_probas,f_neg_probas,t_pos_name_prob,t_neg_name_prob)
+    return(acc,sens,spec,f_meas,f_pos,f_neg,f_pos_probas,f_neg_probas,t_pos_name_prob,t_neg_name_prob)
         
 #-------VALIDATION OUTPUT-------#    
 
@@ -322,17 +364,21 @@ def MahDist(x,y,cov_mat_inv):
     md = round(md,3)
     return(md)	         
 
-def CalcMahDists(inp_df):
+def CalcMahDists(inp_df,use_bal):
     """
     Calculates Mahalanobis Distance for every input molecule.
     """
     dir_path = os.path.dirname(os.path.realpath(__file__))
+    if use_bal:
+        fn_suffix = "bal"
+    else:
+        fn_suffix = "imba"
     # fetching Mahalanobis distance information
     train_mv,train_cmi,train_ad = joblib.load(os.path.join(dir_path,"mah_dist_info",
-                                             "train_mah-dist_info_2D+3D_ma"))
+                                             "train_mah-dist_info_2D+3D_ma_{}".format(fn_suffix)))
                                       
     train_amv,train_acmi,train_aad = joblib.load(os.path.join(dir_path,"mah_dist_info",
-                                             "train_act_mah-dist_info_2D+3D_ma"))
+                                             "train_act_mah-dist_info_2D+3D_ma_{}".format(fn_suffix)))
     
     # fetching names of descriptors used in the MI-DSE fingerprint
     na_names,mi_dse_names = ReadClassDesc()
@@ -378,15 +424,19 @@ def ProdFpFnOutString(max_name_len,pred_list,pred_type,fold=0,probs=[]):
             outString = outString + str(probs[ind]) + "\n"
     return(outString+"\n")        
 
-def ProdFpFnCSV(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
-                   t_pos_prob=[],t_pos_name_prob=[],t_neg_name_prob=[],vali="EXT"):
+def ProdFpFnCSV(use_bal,f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
+                t_pos_prob=[],t_pos_name_prob=[],t_neg_name_prob=[],vali="EXT"):
     """
     Writes .csv file of False Positives and False Negatives of external validations.
     """
     if not os.path.exists("perf_table"):
         os.makedirs("perf_table")
+    if use_bal:
+        fn_suffix = "bal"
+    else:
+        fn_suffix = "imba"
         
-    filename = os.path.join("perf_table","fp_fn.csv")
+    filename = os.path.join("perf_table","fp_fn_{}.csv".format(fn_suffix))
     with open(filename,"w") as file:
         outString = ""
         if vali == "KFOLD":
@@ -427,7 +477,7 @@ def ProdFpFnCSV(f_pos,f_neg,f_pos_prob=[],f_neg_prob=[],
             outString = outString + "\n\n"
         file.write(outString)
 
-def ProdExtPerfTab(acc,f_meas,f_neg,num_mols):
+def ProdExtPerfTab(use_bal,acc,sens,spec,f_meas,f_neg,f_pos,num_mols):
     """
     Creates .xlsx file of performance measures of external validation.
     """
@@ -436,41 +486,82 @@ def ProdExtPerfTab(acc,f_meas,f_neg,num_mols):
     title = ""
     ws.title = "Performance Table"
     ws["A1"] = "Accuracy"
-    ws["B1"] = "F-Measure"
-    ws["C1"] = "FN / #molecules"
+    ws["B1"] = "Sensitivity"
+    ws["C1"] = "Specificity"
+    ws["D1"] = "F-Measure"
+    ws["E1"] = "FN / #molecules"
     ws["A{}".format(2)] = "%.3f" % acc
-    ws["B{}".format(2)] = "%.3f" % f_meas
-    ws["C{}".format(2)] = str(len(f_neg)) + "/" + str(num_mols)
+    ws["B{}".format(2)] = "%.3f" % sens
+    ws["C{}".format(2)] = "%.3f" % spec
+    ws["D{}".format(2)] = "%.3f" % f_meas
+    ws["E{}".format(2)] = str(len(f_neg)) + "/" + str(num_mols)
+    ws["F{}".format(2)] = str(len(f_pos)) + "/" + str(num_mols)
+    
     ws.column_dimensions["A"].width = 15
     ws.column_dimensions["B"].width = 15
     ws.column_dimensions["C"].width = 15
-   
-    filename = os.path.join("perf_table","pred_perf.xlsx")
+    ws.column_dimensions["D"].width = 15
+    ws.column_dimensions["E"].width = 15
+    ws.column_dimensions["F"].width = 15
+    
+    if use_bal:
+        fn_suffix = "bal"
+    else:
+        fn_suffix = "imba"
+    filename = os.path.join("perf_table","pred_perf_{}.xlsx".format(fn_suffix))
     wb.save(filename)
 
 #-------VALIDATION OUTPUT-------#             
+
+def LoadInput(smiles,filepath,id_name,act_name,smiles_name):
+    # load input smiles, 
+    if smiles:
+        ids = [0]
+        act = [None]
+        inp_mols = [SmilesToMol(smiles)]
+    if filepath:
+        fn, fe = os.path.splitext(filepath)
+        if fe == ".csv":
+            inp_mols,ids,act = DataFromCSV(filepath,id_name,act_name,smiles_name)
+        elif fe == ".sdf":
+            inp_mols,ids,act = MolsFromSDF(filepath,id_name,act_name=act_name)
+        else:
+            print("Please use valid filetype (.csv or .sdf)")
+    return(inp_mols,ids,act)
     
-def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,act_pos= -1,skip_first=False):
+    
+def RemErrorMols(inp_df,mi_dse_names,na_names):
+    drop_rows = []
+    for i,row in inp_df.iterrows():
+        drop = False
+        for desc in mi_dse_names:
+            # if descriptor value is neither float, int, or boolean
+            if not IsType(row[desc]):
+                # molecule having missing descriptor value is dropped
+                drop = True
+                break
+        if drop:
+            drop_rows.append(i)
+            print("Removing Molecule {} ".format(row["ID"]))
+        for desc in na_names:
+            if isinstance(row[desc],float):
+                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 1
+            else:
+                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 0
+    inp_df.drop(drop_rows,inplace=True)
+
+    
+def ProdFP(smiles="",filepath="",id_name="",act_name="",
+           smiles_name="",use_bal=False):
     """
     Produces Fingerprints for given SMILES, .csv containing SMILES, or .sdf containing molecules.
     smiles_pos, and id_pos define the position of the SMILES string and ID in the .csv file.
     id_name defines the property name holding the IDs of the molecules.
     """
-    # load input smiles, 
-    if smiles:
-        inp_mols = SmilesToMols([smiles])
-    if filepath:
-        fe = filepath.split(".")[-1]
-        if fe == "csv":
-            smiles,ids,act = DataFromCSV(filepath,smiles_pos,
-                                     id_pos,act_pos,
-                                     skip_first)
-            inp_mols = SmilesToMols(smiles)
-        elif fe == "sdf":
-            inp_mols,ids,act = MolsFromSDF(filepath,id_name,act_name=act_name)
-        else:
-            print("Please specify valid filetype (.csv or .sdf)")
     
+    # loading dataset  
+    inp_mols,ids,act = LoadInput(smiles,filepath,id_name,act_name,smiles_name)
+           
     # calculate descriptors
     print("Calculating Descriptors...", end="",flush=True) 
     na_names,mi_dse_names = ReadClassDesc()
@@ -478,29 +569,21 @@ def ProdFP(smiles="",filepath="",id_name="",act_name="",smiles_pos=-1,id_pos=-1,
     inp_df = ProdDescDF("2D+3D",inp_mols,act=act,ids=ids,keep_desc_names=keep_desc_names)
     print("Done", end="\n")
     
+    # removing molecules with faulty descriptors
     print("Removing Molecules Producing Desriptor Errors...", end="",flush=True) 
-    drop_rows = []
-    for i,row in inp_df.iterrows():
-        for desc in mi_dse_names:
-            if not IsType(row[desc]):
-                drop_rows.append(i)
-        for desc in na_names:
-            if isinstance(row[desc],float):
-                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 1
-            else:
-                inp_df.iloc[i, inp_df.columns.get_loc(desc)] = 0
-    inp_df.drop(drop_rows,inplace=True)
+    RemErrorMols(inp_df,mi_dse_names,na_names)
     print("Done", end="\n")
 
+    
     print("Producing {} Fingerprints...".format("2D+3D"), end="",flush=True)
     # featch bin boundaries
-    bin_bounds = ReadBinBounds()
+    bin_bounds = ReadBinBounds(use_bal)
     # calculate fingerprints
     inp_df["Fingerprint"] = inp_df.apply(ProdBitFP,args=(na_names,bin_bounds,8),axis=1)
     print("Done", end="\n")
     return(inp_df)
     
-def BbbPred(inp_df,act=False,ret=False):
+def BbbPred(inp_df,act=False,ret=False,use_bal=False):
     """
     Performs predictions for given fingerprints. 
     In case activities are supplied a prediction evaluation is performed
@@ -508,7 +591,11 @@ def BbbPred(inp_df,act=False,ret=False):
     """
     # fetch model
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    bbbRf = joblib.load(os.path.join(dir_path,"model","bbbRf.sav"))
+    if use_bal:
+        fn_suffix = "bal"
+    else:
+        fn_suffix = "imba"
+    bbbRf = joblib.load(os.path.join(dir_path,"model","bbbRf_{}.sav".format(fn_suffix)))
     
     # fetching fingerprints, ids from dataframe
     fps = inp_df["Fingerprint"].tolist()
@@ -522,22 +609,22 @@ def BbbPred(inp_df,act=False,ret=False):
     probas = bbbRf.predict_proba(fps)
     
     # calculating Mahalanobis Distance to training center of query molecules
-    mah_dists,mah_dists_act = CalcMahDists(inp_df) 
+    mah_dists,mah_dists_act = CalcMahDists(inp_df,use_bal) 
     
-    if act:
+    if act and (inp_df.shape[0] > 1):
         # in case activity is supplied, performance metrics are calculated
-        acc,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TestVal(result,probas,act,ids)
+        acc,sens,spec,f_meas,f_pos,f_neg,f_ppr,f_npr,t_pnpr,t_npr = TestVal(result,probas,act,ids)
         # produces .csv file listing True Positives, True Negatives, False Positives, 
         # and False Negatives       
-        ProdFpFnCSV(f_pos,f_neg,f_pos_prob=f_ppr,f_neg_prob=f_npr,
+        ProdFpFnCSV(use_bal,f_pos,f_neg,f_pos_prob=f_ppr,f_neg_prob=f_npr,
                               t_pos_name_prob=t_pnpr,t_neg_name_prob=t_npr)  
         # produces .xlsx file of performance metrics
-        ProdExtPerfTab(acc,f_meas,f_neg,len(act))
-    if ret:
-        return(ids,result,probas)
+        ProdExtPerfTab(use_bal,acc,sens,spec,f_meas,f_neg,f_pos,len(act))
     else:
-        if not act:
-            act = [None for id in ids]
+        act = [None for id in ids]
+    if ret:            
+        return(ids,result,probas,act)
+    else:
         for i, pred in enumerate(result):
             print("""Molecule {} prediction: {} (Prob.: {}); Activity: {}
                  Distance to Training Set Center: {}
