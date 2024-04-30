@@ -7,9 +7,9 @@
 
 1. [Overview](#overview)
 2. [Installation](#installation)
-2. [Functionalities](#functionalities)
-3. [Examples](#examples)
-4. [Folders and Files](#FoldersandFiles)
+3. [Functionalities](#functionalities)
+4. [Examples](#examples)
+5. [Folders and Files](#FoldersandFiles)
 
 
 ## Overview <a name="overview"></a>
