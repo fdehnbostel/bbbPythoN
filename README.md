@@ -102,12 +102,12 @@ filepath_sdf = os.path.join("dir2","input.sdf")
 if __name__ == '__main__':
 # Calculating fingerprints and specifying column names of SMILES, ID, and activity in .csv.
 # In case no activities are available omit act_name. 
-# Exchange *"id_name"*, *"act_name"*, and *"smiles_name"* with the respective column names 
+# Exchange "id_name", "act_name", and "smiles_name" with the respective column names 
 # of your dataset.
 	csv_fp_df = bbbPythoN.ProdFP(filepath=filepath_csv,id_name="id_name",act_name="act_name",smiles_name="act_name",use_bal=True)
 # Calculating fingerprints and molecule properties for compounds contained in .sdf file.
 # In case no activities are available omit act_name.
-# Exchange *"id_name"*, *"act_name"*, and *"smiles_name"* with the respective column names 
+# Exchange "id_name", "act_name", and "smiles_name" with the respective column names 
 # of your dataset.
 	sdf_fp_df = bbbPythoN.ProdFP(filepath=filepath_sdf,id_name="id_name",act_name="act_name",smiles_name="act_name",use_bal=True)
 # It is advised to save the pandas DataFrames using .to_pickle() instead of .to_csv(), as the latter 
