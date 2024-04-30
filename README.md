@@ -33,8 +33,8 @@ joblib, numpy, pandas, openpyxl, rdkit, mordred <br/>
 
 ## Functionalities <a name="Functionalities"></a>
 This package consists of the functionalities necessary to create the Blood-Brain barrier (bbb) MI-DSE<br/> 
-Fingerprints described in "Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of Drug-<br/>
-Like Compounds" for a given SMILES, set of SMILES or set of molecules supplied via .sdf and predict<br/>
+Fingerprints described in "["Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of <br/>
+Drug-Like Compounds"](https://doi.org/10.1038/s41598-024-59734-9) for a given SMILES, set of SMILES or set of molecules supplied via .sdf and predict<br/>
 their bbb-permeability.<br/>
 
 Function ProdFP() produces the aforementioned fingerprints and accepts either a single SMILES string, a .csv<br/> 
