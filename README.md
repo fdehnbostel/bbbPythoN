@@ -18,8 +18,8 @@ Based on fingerprints encoding values of a pre-selected set of descriptors chose
 power in regard to BBB permeability, random forest classifiers predict whether compounds are likely to <br/>
 cross the BBB. Two different models, trained on an imbalanced and a balanced dataset, respectively, are <br/>
 included  in this package. <br/>
-As it was shown in "Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of <br/>
-Drug-Like Compounds" our models are most suited for the prediction of passive permeation.<br/>
+As it was shown in ["Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of <br/>
+Drug-Like Compounds"](https://doi.org/10.1038/s41598-024-59734-9) our models are most suited for the prediction of passive permeation.<br/>
 Given a set of compounds, either as SMILES via command line input, as .csv file containing SMILES, or as <br/>
 .sdf file containing MolBlocks, fingerprints can be produced and the molecules' activity predicted via<br/>
 the random forests.<br/>
