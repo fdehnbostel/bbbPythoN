@@ -148,7 +148,7 @@ as well as *train_mah-dist_info_2D+3D_ma_bal*, and *train_mah-dist_info_2D+3D_ma
 The former two contain information necessary for the compuation of the Mahalanobis distance <br/>
 between the center of the training set *actives* and the query molecules.<br/>
 The latter two contain information necessary for the compuation of the Mahalanobis distance <br/>
-between the center of the training set and the query molecules.<br/>  
+between the center of the training set and the query molecules.<br/>
 \
 *model*:<br/>
 Contains the two Random Forest classifiers trained on the balanced and imbalanced datasets.<br/>
