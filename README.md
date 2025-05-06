@@ -31,7 +31,7 @@ to the folder the .whl file is located in.<br/>
 Additional packages used in this package will be installed as well and consist of: <br/> 
 joblib, numpy, pandas, openpyxl, rdkit, mordred <br/>
 
-## Functionalities <a name="Functionalities"></a>
+## Functionalities <a name="functionalities"></a>
 This package consists of the functionalities necessary to create the Blood-Brain barrier (bbb) MI-DSE<br/> 
 Fingerprints described in "["Non-Animal Models for Blood-Brain Barrier Permeability Evaluation of <br/>
 Drug-Like Compounds"](https://doi.org/10.1038/s41598-024-59734-9) for a given SMILES, set of SMILES or set of molecules supplied via .sdf and predict<br/>
@@ -89,7 +89,7 @@ By default False.<br/>
 Specifies whether to use the model trained on the balanced, or imbalanced dataset.<br/>
 By default False.<br/>
 
-## Examples <a name="Examples"></a>
+## Examples <a name="examples"></a>
 ```python
 import os
 from bbbPythoN import bbbPythoN
