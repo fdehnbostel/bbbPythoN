@@ -9,7 +9,7 @@
 2. [Installation](#installation)
 3. [Functionalities](#functionalities)
 4. [Examples](#examples)
-5. [Folders and Files](#FoldersandFiles)
+5. [Folders and Files](#foldersandfiles)
 
 
 ## Overview <a name="overview"></a>
@@ -122,7 +122,7 @@ if __name__ == '__main__':
 # If ret=False the molecules's IDs, predictions, and prediction probabilities are printed.
 	bbbPythoN.BbbPred(csv_fp_df,ret=False,use_bal=True)
 ```
-## Folders and Files <a name="FoldersandFiles"></a>
+## Folders and Files <a name="foldersandfiles"></a>
 
 *bin_bounds*:<br/>
 Contains .csv files specifying the boundaries of bins used to encode descriptor values<br/>
