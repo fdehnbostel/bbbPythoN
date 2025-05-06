@@ -131,7 +131,7 @@ boundaries based on the balanced, and the imbalanced dataset, respectively. <br/
 \
 *data*:<br/>
 Contains the different datasets used in "Non-Animal Models for Blood-Brain Barrier Permeability<br/>
-Evaluation of Drug-Like Compounds". 
+Evaluation of Drug-Like Compounds". <br/>
 *B3DB_BalTrainTestData.csv*: the balanced dataset used to train and validate models.<br/>
 *FeatSel_Data.csv*: the dataset used for MI-DSE feature selection.<br/>
 *Inhouse_ImbaTrainTestData.csv*: the imbalanced dataset used to train and validate models.<br/>
